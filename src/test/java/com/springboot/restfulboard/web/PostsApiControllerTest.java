@@ -4,6 +4,7 @@ package com.springboot.restfulboard.web;
 import com.springboot.restfulboard.domain.posts.Posts;
 import com.springboot.restfulboard.domain.posts.PostsRepository;
 import com.springboot.restfulboard.web.dto.PostsSaveRequestDto;
+import com.springboot.restfulboard.web.dto.PostsUpdateRequestDto;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Test;
@@ -12,12 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
-import java.util.Optional;
 
 
 @RunWith(SpringRunner.class)
@@ -57,13 +59,36 @@ public class PostsApiControllerTest {
         List<Posts> all = postsRepository.findAll();
         Assertions.assertThat(all.get(0).getTitle()).isEqualTo(title);
         Assertions.assertThat(all.get(0).getContent()).isEqualTo(content);
-
-        Optional<Posts> optional = postsRepository.findById(responseEntity.getBody());
-        if (optional.isPresent()) {
-            Posts posts = optional.get();
-            Assertions.assertThat(posts.getTitle()).isEqualTo(title);
-            Assertions.assertThat(posts.getContent()).isEqualTo(content);
-        }
     }
 
+    @Test
+    public void Posts_수정된다() throws Exception {
+        // given
+        Posts savedPosts = postsRepository.save(Posts.builder()
+                .content("content")
+                .title("title")
+                .author("author")
+                .build());
+        Long updateId = savedPosts.getId();
+        String expectedTitle = "new title";
+        String expectedContent = "new content";
+
+        PostsUpdateRequestDto requestDto = PostsUpdateRequestDto.builder()
+                .title(expectedTitle)
+                .content(expectedContent)
+                .build();
+        String url = "http://localhost:" + port + "/api/v1/posts" + updateId;
+        HttpEntity<PostsUpdateRequestDto> requestEntity = new HttpEntity<>(requestDto);
+
+        // when
+        ResponseEntity<Long> responseEntity = restTemplate
+                .exchange(url, HttpMethod.PUT, requestEntity, Long.class);
+        // then
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Assertions.assertThat(responseEntity.getBody()).isGreaterThan(0L);
+
+        List<Posts> all = postsRepository.findAll();
+        Assertions.assertThat(all.get(0).getTitle()).isEqualTo(expectedTitle);
+        Assertions.assertThat(all.get(0).getContent()).isEqualTo(expectedContent);
+    }
 }
